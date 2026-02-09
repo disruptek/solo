@@ -343,7 +343,7 @@ Solo.Protocol.register("my_protocol", handler_module)
 
 Official Docker image and K8s operator:
 ```bash
-docker run -p 50051:50051 -p 8080:8080 anomaly/solo:v0.2.0
+docker run -p 50051:50051 -p 8080:8080 disruptek/solo:v0.2.0
 
 # Or with K8s
 kubectl apply -f solo-operator.yaml

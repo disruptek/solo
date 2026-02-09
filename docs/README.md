@@ -198,7 +198,7 @@ curl http://localhost:8080/metrics \
 ### Installation
 
 ```bash
-git clone https://github.com/anomalyco/solo.git
+git clone https://github.com/disruptek/solo.git
 cd solo
 export PATH="$HOME/.asdf/installs/erlang/28.3.1/bin:$HOME/.asdf/installs/elixir/1.19.5/bin:$PATH"
 mix deps.get
@@ -435,7 +435,7 @@ If queue is full, service is stuck. Kill and redeploy.
 - Check [REST_API.md](REST_API.md) for endpoint examples
 - Read [OTP_API.md](OTP_API.md) for Elixir function signatures
 - See [DEPLOYMENT.md](DEPLOYMENT.md) for configuration
-- File an issue on GitHub: https://github.com/anomalyco/solo/issues
+- File an issue on GitHub: https://github.com/disruptek/solo/issues
 
 ---
 

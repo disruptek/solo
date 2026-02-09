@@ -31,7 +31,7 @@ Solo enables LLM agents to safely deploy and manage their own microservices with
 ### Installation
 
 ```bash
-git clone https://github.com/anomalyco/solo.git
+git clone https://github.com/disruptek/solo.git
 cd solo
 export PATH="$HOME/.asdf/installs/erlang/28.3.1/bin:$HOME/.asdf/installs/elixir/1.19.5/bin:$PATH"
 mix deps.get

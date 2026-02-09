@@ -65,7 +65,7 @@ asdf install
 ### 1. Clone Repository
 
 ```bash
-git clone https://github.com/anomalyco/solo.git
+git clone https://github.com/disruptek/solo.git
 cd solo
 ```
 
