@@ -25,20 +25,20 @@ defmodule Solo.System.Supervisor do
     Supervisor.start_link(__MODULE__, opts, name: __MODULE__)
   end
 
-  @impl Supervisor
-  def init(_opts) do
-    children = [
-      {Solo.EventStore, [db_path: "./data/events"]},
-      Solo.AtomMonitor,
-      {Solo.Registry, []},
-      Solo.Deployment.Deployer,
-      Solo.Capability.Manager,
-      Solo.Backpressure.LoadShedder,
-      # {Solo.Vault, [db_path: "./data/vault"]},  # TODO: Fix CubDB shutdown issue in tests
-      {Solo.Telemetry, [handlers: [:logger]]},
-      Solo.Gateway
-    ]
+   @impl Supervisor
+   def init(_opts) do
+     children = [
+       {Solo.EventStore, [db_path: "./data/events"]},
+       Solo.AtomMonitor,
+       {Solo.Registry, []},
+       Solo.Deployment.Deployer,
+       Solo.Capability.Manager,
+       Solo.Backpressure.LoadShedder,
+       {Solo.Vault, [db_path: "./data/vault"]},
+       {Solo.Telemetry, [handlers: [:logger]]},
+       Solo.Gateway
+     ]
 
-    Supervisor.init(children, strategy: :rest_for_one)
-  end
+     Supervisor.init(children, strategy: :rest_for_one)
+   end
 end

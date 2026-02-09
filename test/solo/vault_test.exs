@@ -5,8 +5,21 @@ defmodule Solo.VaultTest do
   setup do
     {:ok, _apps} = Application.ensure_all_started(:solo)
 
+    tenant_id = "vault_tenant_1"
+    
+    # Clear any existing secrets for this tenant before each test
+    # by revoking all secrets for the tenant
+    case Solo.Vault.list_secrets(tenant_id) do
+      {:ok, secrets} ->
+        Enum.each(secrets, fn secret_name ->
+          Solo.Vault.revoke(tenant_id, secret_name)
+        end)
+      {:error, _} ->
+        :ok
+    end
+
     {:ok,
-     tenant_id: "vault_tenant_1",
+     tenant_id: tenant_id,
      secret_name: "api_key",
      secret_value: "super_secret_key_12345",
      master_key: "tenant_master_password"}

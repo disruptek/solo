@@ -72,24 +72,34 @@ defmodule Solo.Vault do
 
   # === GenServer Callbacks ===
 
-  @impl GenServer
-  def init(opts) do
-    db_path = Keyword.get(opts, :db_path, "./data/vault")
-    
-    try do
-      {:ok, db} = CubDB.start_link(db_path)
-      Logger.info("[Vault] Started")
-      {:ok, %{db: db}}
-    rescue
-      e ->
-        Logger.error("[Vault] Failed to start: #{inspect(e)}")
-        {:stop, e}
-    catch
-      e ->
-        Logger.error("[Vault] Caught error during init: #{inspect(e)}")
-        {:stop, e}
-    end
-  end
+   @impl GenServer
+   def init(opts) do
+     db_path = Keyword.get(opts, :db_path, "./data/vault")
+     
+     try do
+       {:ok, db} = CubDB.start_link(db_path)
+       Logger.info("[Vault] Started with db_path=#{db_path}")
+       {:ok, %{db: db, db_path: db_path}}
+     rescue
+       e ->
+         Logger.error("[Vault] Failed to start: #{inspect(e)}")
+         {:stop, e}
+     catch
+       e ->
+         Logger.error("[Vault] Caught error during init: #{inspect(e)}")
+         {:stop, e}
+     end
+   end
+
+   @impl GenServer
+   def terminate(reason, state) do
+     Logger.info("[Vault] Terminating with reason: #{inspect(reason)}")
+     
+     # CubDB is a supervised process and will be cleaned up by the supervisor
+     # No need to manually close it
+     
+     :ok
+   end
 
   @impl GenServer
   def handle_call({:store, tenant_id, secret_name, secret_value, key, _opts}, _from, state) do
@@ -205,44 +215,50 @@ defmodule Solo.Vault do
 
   # === Private Helpers ===
 
-  # Encrypt secret value with AES-256-GCM
-  defp encrypt_secret(plaintext, key) do
-    try do
-      # Derive encryption key from the provided key
-      derived_key = derive_key(key, 32)
+   # Encrypt secret value with AES-256-GCM
+   defp encrypt_secret(plaintext, key) do
+     try do
+       # Derive encryption key from the provided key
+       derived_key = derive_key(key, 32)
 
-      # Generate random IV (96 bits for GCM)
-      iv = :crypto.strong_rand_bytes(12)
+       # Generate random IV (96 bits for GCM)
+       iv = :crypto.strong_rand_bytes(12)
 
-      # Encrypt with AES-256-GCM
-      {ciphertext, tag} = :crypto.crypto_one_time_aead(:aes_256_gcm, derived_key, iv, plaintext, "", true)
+       # Encrypt with AES-256-GCM
+       # crypto_one_time_aead(Type, Key, IV, PlainText, AAD, TagLength, EncFlag)
+       {ciphertext, tag} = :crypto.crypto_one_time_aead(:aes_256_gcm, derived_key, iv, plaintext, "", 16, true)
 
-      # Combine IV + tag + ciphertext for storage
-      combined = iv <> tag <> ciphertext
+       # Combine IV + tag + ciphertext for storage
+       combined = iv <> tag <> ciphertext
 
-      {:ok, combined}
-    rescue
-      e -> {:error, inspect(e)}
-    end
-  end
+       {:ok, combined}
+     rescue
+       e -> {:error, inspect(e)}
+     end
+   end
 
-  # Decrypt secret value with AES-256-GCM
-  defp decrypt_secret(combined, key) do
-    try do
-      # Derive the same key
-      derived_key = derive_key(key, 32)
+   # Decrypt secret value with AES-256-GCM
+   defp decrypt_secret(combined, key) do
+     try do
+       # Derive the same key
+       derived_key = derive_key(key, 32)
 
-      # Extract IV (first 12 bytes), tag (next 16 bytes), ciphertext (rest)
-      <<iv::binary-size(12), tag::binary-size(16), ciphertext::binary>> = combined
+       # Extract IV (first 12 bytes), tag (next 16 bytes), ciphertext (rest)
+       <<iv::binary-size(12), tag::binary-size(16), ciphertext::binary>> = combined
 
-      # Decrypt with AES-256-GCM
-      plaintext = :crypto.crypto_one_time_aead(:aes_256_gcm, derived_key, iv, ciphertext, "", tag)
+       # Decrypt with AES-256-GCM
+       # crypto_one_time_aead(Type, Key, IV, CipherText, AAD, Tag, false)
+       plaintext = :crypto.crypto_one_time_aead(:aes_256_gcm, derived_key, iv, ciphertext, "", tag, false)
 
-      {:ok, plaintext}
-    rescue
-      e -> {:error, inspect(e)}
-    end
-  end
+       # Check if decryption returned an error atom (happens on tag verification failure)
+       case plaintext do
+         :error -> {:error, "Decryption failed - tag verification failed"}
+         _ -> {:ok, plaintext}
+       end
+     rescue
+       e -> {:error, inspect(e)}
+     end
+   end
 
   # Derive a key from a master key using SHA-256
   # In production, would use a salt stored per secret and PBKDF2
