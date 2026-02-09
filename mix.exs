@@ -43,6 +43,7 @@ defmodule Solo.MixProject do
       {:telemetry, "~> 1.2"},
       {:telemetry_metrics, "~> 0.6"},
       {:telemetry_poller, "~> 1.0"},
+      {:telemetry_metrics_prometheus_core, "~> 1.1"},
 
       # Testing
       {:stream_data, "~> 1.0", only: :test},
