@@ -1,0 +1,49 @@
+# Build artifacts
+/_build/
+/deps/
+*.beam
+*.ez
+
+# Mix
+erl_crash.dump
+.mix/
+
+# Elixir
+.elixir_ls/
+.erl_crash.dump
+.erl_crash.dump.crash
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Runtime data - LOCAL ONLY (don't commit)
+# data/ subdirectory contains:
+#  - Event store (./data/events/) - session-specific
+#  - Vault (./data/vault/) - session-specific
+#  - Certificates (./data/certs/) - only CA required, service certs regenerated
+# To preserve data across runs, see DEPLOYMENT.md for persistence setup
+/data/events/
+/data/vault/
+/data/certs/server*.pem
+
+# Test artifacts
+/cover/
+.dialyzer_plt
+
+# Generated files
+/priv/
+*.o
+*.so
+*.dylib
+
+# Package files
+*.tar.gz
+*.zip
