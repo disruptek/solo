@@ -1,11 +1,19 @@
 defmodule Solo.Gateway do
   @moduledoc """
-  gRPC gateway for remote agent access.
+  Dual-protocol gateway for remote agent access.
 
   Provides:
   - gRPC service on port 50051 (Deploy, Kill, Status, List, Watch, Shutdown RPCs)
-  - HTTP health endpoint on port 8080 (/health)
+  - REST API on port 8080 (HTTP/JSON endpoints for service management and monitoring)
   - mTLS authentication (verified client certificate = tenant_id)
+
+  REST API includes:
+  - POST /services - Deploy service
+  - GET /services - List services
+  - GET /services/{id} - Get service status
+  - DELETE /services/{id} - Kill service
+  - GET /events - Stream events (Server-Sent Events)
+  - GET /health - Health check
 
   The gateway manages both gRPC and HTTP servers.
   """
@@ -49,20 +57,19 @@ defmodule Solo.Gateway do
   end
 
   defp start_http_server do
-    # Start HTTP health check endpoint
-    dispatch =
-      :cowboy_router.compile([
-        {:_,
-         [
-           {"/health", Solo.Gateway.HealthHandler, []},
-           {"/metrics", Solo.Gateway.MetricsHandler, []},
-           {"/:_", Solo.Gateway.NotFoundHandler, []}
-         ]}
-      ])
+    # Start HTTP REST API endpoints
+    dispatch = Solo.Gateway.REST.Router.compile()
 
     case :cowboy.start_clear(:http, [port: @http_port], %{env: [dispatch: dispatch]}) do
       {:ok, pid} ->
-        Logger.info("[Gateway] HTTP health endpoint started on port #{@http_port}")
+        Logger.info("[Gateway] REST API started on port #{@http_port}")
+        Logger.info("[Gateway] Available endpoints:")
+        Logger.info("[Gateway]   POST /services - Deploy service")
+        Logger.info("[Gateway]   GET /services - List services")
+        Logger.info("[Gateway]   GET /services/{id} - Get service status")
+        Logger.info("[Gateway]   DELETE /services/{id} - Kill service")
+        Logger.info("[Gateway]   GET /events - Stream events (SSE)")
+        Logger.info("[Gateway]   GET /health - Health check")
         {:ok, pid}
 
       {:error, reason} ->
