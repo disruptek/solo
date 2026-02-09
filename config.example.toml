@@ -1,0 +1,67 @@
+# Solo Configuration File (TOML)
+# Copy this file to config.toml and customize for your deployment
+
+[solo]
+# gRPC server port
+listen_port = 50051
+
+# HTTP REST API server port
+http_port = 8080
+
+# Data storage directory
+data_dir = "./data"
+
+# Maximum number of tenants
+max_tenants = 100
+
+# Log level: debug, info, warning, error
+log_level = "info"
+
+[limits]
+# Maximum in-flight requests per tenant
+max_per_tenant = 100
+
+# Maximum in-flight requests globally
+max_total = 1000
+
+[telemetry]
+# Enable telemetry collection
+enabled = true
+
+# Log telemetry events
+log_events = true
+
+# Prometheus metrics port (optional)
+# prometheus_port = 9090
+
+[security]
+# Require mutual TLS (mTLS) for all connections
+require_mtls = false
+
+# Rate limit per capability token (requests/second)
+rate_limit_per_capability = 1000
+
+# Service-to-service mTLS authentication
+# require_service_mtls = false
+
+[database]
+# Event store database path
+events_db = "./data/events"
+
+# Vault (secrets) database path
+vault_db = "./data/vault"
+
+# Compact databases after N events
+# compact_after_events = 10000
+
+# Database backup directory
+# backup_dir = "./backups"
+
+# Optional: Tenant-specific overrides
+# [tenants.tenant_1]
+# max_services = 50
+# max_memory_mb = 512
+#
+# [tenants.tenant_2]
+# max_services = 100
+# rate_limit = 5000

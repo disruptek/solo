@@ -45,6 +45,9 @@ defmodule Solo.MixProject do
       {:telemetry_poller, "~> 1.0"},
       {:telemetry_metrics_prometheus_core, "~> 1.1"},
 
+      # Configuration
+      {:toml, "~> 0.7"},
+
       # Testing
       {:stream_data, "~> 1.0", only: :test},
       {:mox, "~> 1.0", only: :test},

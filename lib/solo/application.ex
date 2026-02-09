@@ -9,6 +9,9 @@ defmodule Solo.Application do
   def start(_type, _args) do
     Logger.info("Solo application starting...")
 
+    # Load configuration from file if it exists
+    load_configuration()
+
     children = [
       Solo.Kernel
     ]
@@ -21,5 +24,30 @@ defmodule Solo.Application do
   def stop(_state) do
     Logger.info("Solo application stopping...")
     :ok
+  end
+
+  # === Private Helpers ===
+
+  defp load_configuration do
+    config_path = System.get_env("SOLO_CONFIG", "config.toml")
+
+    case File.exists?(config_path) do
+      true ->
+        Logger.info("Loading configuration from #{config_path}")
+
+        case Solo.Config.load(config_path) do
+          {:ok, config} ->
+            # Store configuration in application environment
+            Application.put_env(:solo, :config, config)
+            Logger.info("Configuration loaded successfully")
+
+          {:error, reason} ->
+            Logger.warning("Failed to load configuration: #{inspect(reason)}")
+            # Continue with defaults
+        end
+
+      false ->
+        Logger.debug("Configuration file not found (#{config_path}), using defaults")
+    end
   end
 end
