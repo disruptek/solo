@@ -31,8 +31,15 @@ defmodule Solo.Gateway.REST.Router do
       {"/services", Solo.Gateway.REST.ServicesHandler, []},
       {"/services/:service_id", Solo.Gateway.REST.ServiceHandler, []},
 
+      # Secrets Management
+      {"/secrets", Solo.Gateway.REST.SecretsHandler, []},
+      {"/secrets/:key", Solo.Gateway.REST.SecretsHandler, []},
+
       # Events Streaming
       {"/events", Solo.Gateway.REST.EventsHandler, []},
+
+      # Logs Streaming
+      {"/logs", Solo.Gateway.REST.LogsHandler, []},
 
       # Health Check
       {"/health", Solo.Gateway.HealthHandler, []},

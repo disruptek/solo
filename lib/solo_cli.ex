@@ -390,21 +390,167 @@ defmodule SoloCLI do
     end
   end
 
-  defp get_secret(_tenant_id, _key, _options) do
-    IO.puts("✓ Secrets support coming in v0.3.0")
+  defp get_secret(tenant_id, key, _options) do
+    url = "http://#{@http_host}:#{@http_port}/secrets/#{key}"
+
+    case :httpc.request(
+           :get,
+           {String.to_charlist(url), [{'X-Tenant-Id', String.to_charlist(tenant_id)}]},
+           [],
+           []
+         ) do
+      {:ok, {{_version, 200, _}, _headers, response_body}} ->
+        response = Jason.decode!(response_body)
+
+        IO.puts("✓ Secret: #{key}")
+        IO.puts("  Exists: #{response["exists"]}")
+
+      {:ok, {{_version, 404, _}, _headers, _response_body}} ->
+        IO.puts(:stderr, "✗ Secret not found: #{key}")
+        System.halt(1)
+
+      {:ok, {{_version, status, _}, _headers, response_body}} ->
+        response = Jason.decode!(response_body)
+        IO.puts(:stderr, "✗ Error (#{status}): #{response["message"]}")
+        System.halt(1)
+
+      {:error, reason} ->
+        IO.puts(:stderr, "✗ Connection error: #{inspect(reason)}")
+        System.halt(1)
+    end
   end
 
-  defp set_secret(_tenant_id, _key, _value, _options) do
-    IO.puts("✓ Secrets support coming in v0.3.0")
+  defp set_secret(tenant_id, key, value, _options) do
+    url = "http://#{@http_host}:#{@http_port}/secrets"
+
+    body =
+      Jason.encode!(%{
+        "key" => key,
+        "value" => value
+      })
+
+    case :httpc.request(
+           :post,
+           {String.to_charlist(url), [{'X-Tenant-Id', String.to_charlist(tenant_id)}],
+            'application/json', body},
+           [],
+           []
+         ) do
+      {:ok, {{_version, 201, _}, _headers, _response_body}} ->
+        IO.puts("✓ Secret set: #{key}")
+
+      {:ok, {{_version, status, _}, _headers, response_body}} ->
+        response = Jason.decode!(response_body)
+        IO.puts(:stderr, "✗ Error (#{status}): #{response["message"]}")
+        System.halt(1)
+
+      {:error, reason} ->
+        IO.puts(:stderr, "✗ Connection error: #{inspect(reason)}")
+        System.halt(1)
+    end
   end
 
-  defp delete_secret(_tenant_id, _key, _options) do
-    IO.puts("✓ Secrets support coming in v0.3.0")
+  defp delete_secret(tenant_id, key, _options) do
+    url = "http://#{@http_host}:#{@http_port}/secrets/#{key}"
+
+    case :httpc.request(
+           :delete,
+           {String.to_charlist(url), [{'X-Tenant-Id', String.to_charlist(tenant_id)}]},
+           [],
+           []
+         ) do
+      {:ok, {{_version, 204, _}, _headers, _response_body}} ->
+        IO.puts("✓ Secret deleted: #{key}")
+
+      {:ok, {{_version, 404, _}, _headers, _response_body}} ->
+        IO.puts(:stderr, "✗ Secret not found: #{key}")
+        System.halt(1)
+
+      {:ok, {{_version, status, _}, _headers, response_body}} ->
+        response = Jason.decode!(response_body)
+        IO.puts(:stderr, "✗ Error (#{status}): #{response["message"]}")
+        System.halt(1)
+
+      {:error, reason} ->
+        IO.puts(:stderr, "✗ Connection error: #{inspect(reason)}")
+        System.halt(1)
+    end
   end
 
-  defp get_logs(_tenant_id, _service_id, _tail, _options) do
-    IO.puts("✓ Logs support coming in v0.3.0")
+  defp get_logs(tenant_id, service_id, tail, _options) do
+    # Build query parameters
+    query_params = []
+
+    query_params =
+      if service_id, do: query_params ++ [{"service_id", service_id}], else: query_params
+
+    query_params = query_params ++ [{"limit", Integer.to_string(tail)}]
+
+    # Build URL with query string
+    base_url = "http://#{@http_host}:#{@http_port}/logs"
+    query_string = URI.encode_query(query_params)
+    url = if query_string != "", do: "#{base_url}?#{query_string}", else: base_url
+
+    # Request with streaming
+    case :httpc.request(
+           :get,
+           {String.to_charlist(url),
+            [{'X-Tenant-Id', String.to_charlist(tenant_id)}, {'Accept', 'text/event-stream'}]},
+           [],
+           stream: :self
+         ) do
+      {:ok, _request_id} ->
+        # Stream events from the server
+        stream_logs()
+
+      {:error, reason} ->
+        IO.puts(:stderr, "✗ Connection error: #{inspect(reason)}")
+        System.halt(1)
+    end
   end
+
+  defp stream_logs do
+    receive do
+      {:http, {_request_id, :stream_start, _headers}} ->
+        stream_logs()
+
+      {:http, {_request_id, :stream, data}} ->
+        # Parse Server-Sent Events format
+        data
+        |> String.split("\n", trim: true)
+        |> Enum.each(&process_log_event/1)
+
+        stream_logs()
+
+      {:http, {_request_id, :stream_end, _headers}} ->
+        :ok
+
+      {:http, {_request_id, {{_version, status, _}, _headers, _body}}} ->
+        if status != 200 do
+          IO.puts(:stderr, "✗ Error (#{status})")
+          System.halt(1)
+        end
+    after
+      30000 -> :ok
+    end
+  end
+
+  defp process_log_event("data: " <> json_str) do
+    case Jason.decode(json_str) do
+      {:ok, log} ->
+        timestamp = log["timestamp"] || ""
+        level = log["level"] || "INFO"
+        message = log["message"] || ""
+        service_id = log["service_id"] || "unknown"
+
+        IO.puts("[#{timestamp}] #{level} (#{service_id}): #{message}")
+
+      {:error, _} ->
+        :ok
+    end
+  end
+
+  defp process_log_event(_), do: :ok
 
   # === Helpers ===
 
