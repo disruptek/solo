@@ -113,7 +113,8 @@ defmodule Solo.Deployment.Deployer do
 
     with :ok <- validate_format(format),
          {:ok, tenant_supervisor} <- ensure_tenant_supervisor(tenant_id),
-         {:ok, service_pid} <- start_service(tenant_supervisor, tenant_id, service_id, code, restart_limits) do
+         {:ok, service_pid} <-
+           start_service(tenant_supervisor, tenant_id, service_id, code, restart_limits) do
       # Register the service
       Solo.Registry.register(tenant_id, service_id, service_pid)
 
@@ -122,10 +123,13 @@ defmodule Solo.Deployment.Deployer do
       tenant_services = Map.put(tenant_services, service_id, service_pid)
       state = %{state | services: Map.put(state.services, tenant_id, tenant_services)}
 
-      # Emit event
+      # Emit event with full deployment spec for recovery (Phase 9)
       Solo.EventStore.emit(:service_deployed, {tenant_id, service_id}, %{
         service_id: service_id,
-        tenant_id: tenant_id
+        tenant_id: tenant_id,
+        code: code,
+        format: format,
+        restart_limits: restart_limits
       })
 
       {:reply, {:ok, service_pid}, state}
@@ -149,23 +153,23 @@ defmodule Solo.Deployment.Deployer do
 
         Logger.info("[Deployer] Killing service #{service_id} for tenant #{tenant_id}")
 
-         result =
-           if force do
-             Process.exit(pid, :kill)
-             :ok
-           else
-             case Process.exit(pid, :shutdown) do
-               true ->
-                 # Wait for process to die
-                 case wait_for_exit(pid, timeout) do
-                   :ok -> :ok
-                   :timeout -> Process.exit(pid, :kill)
-                 end
+        result =
+          if force do
+            Process.exit(pid, :kill)
+            :ok
+          else
+            case Process.exit(pid, :shutdown) do
+              true ->
+                # Wait for process to die
+                case wait_for_exit(pid, timeout) do
+                  :ok -> :ok
+                  :timeout -> Process.exit(pid, :kill)
+                end
 
-               false ->
-                 :ok
-             end
-           end
+              false ->
+                :ok
+            end
+          end
 
         # Emit event
         Solo.EventStore.emit(:service_killed, {tenant_id, service_id}, %{
@@ -248,7 +252,8 @@ defmodule Solo.Deployment.Deployer do
   defp validate_format(:elixir_source), do: :ok
 
   defp validate_format(format) do
-    {:error, "Unsupported format: #{inspect(format)}. Only :elixir_source is supported in Phase 2."}
+    {:error,
+     "Unsupported format: #{inspect(format)}. Only :elixir_source is supported in Phase 2."}
   end
 
   defp ensure_tenant_supervisor(tenant_id) do
@@ -280,7 +285,10 @@ defmodule Solo.Deployment.Deployer do
 
             case DynamicSupervisor.start_child(tenant_supervisor, spec) do
               {:ok, pid} ->
-                Logger.info("[Deployer] Started service #{service_id} for tenant #{tenant_id}: #{inspect(pid)}")
+                Logger.info(
+                  "[Deployer] Started service #{service_id} for tenant #{tenant_id}: #{inspect(pid)}"
+                )
+
                 {:ok, pid}
 
               {:error, reason} ->
@@ -300,8 +308,7 @@ defmodule Solo.Deployment.Deployer do
     if function_exported?(module, :start_link, 1) do
       :ok
     else
-      {:error,
-       "Service module must export start_link/1 (got module: #{inspect(module)})"}
+      {:error, "Service module must export start_link/1 (got module: #{inspect(module)})"}
     end
   end
 

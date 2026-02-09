@@ -15,7 +15,8 @@ defmodule Solo.Capability.Manager do
 
   require Logger
 
-  @check_interval 60_000  # 1 minute - clean up expired tokens
+  # 1 minute - clean up expired tokens
+  @check_interval 60_000
 
   @doc """
   Start the Capability.Manager GenServer.
@@ -29,8 +30,12 @@ defmodule Solo.Capability.Manager do
 
   Returns `{:ok, token}` where token is the unforgeable capability token.
   """
-  @spec grant(String.t(), Solo.Capability.resource_ref(), [Solo.Capability.permission()],
-              non_neg_integer()) :: {:ok, Solo.Capability.token()}
+  @spec grant(
+          String.t(),
+          Solo.Capability.resource_ref(),
+          [Solo.Capability.permission()],
+          non_neg_integer()
+        ) :: {:ok, Solo.Capability.token()}
   def grant(tenant_id, resource_ref, permissions, ttl_seconds)
       when is_binary(tenant_id) and is_binary(resource_ref) and is_list(permissions) and
              is_integer(ttl_seconds) do
@@ -69,6 +74,10 @@ defmodule Solo.Capability.Manager do
     # token_hash -> capability
     :ets.new(:capabilities, [:named_table, :public, {:read_concurrency, true}])
 
+    # Restore persisted tokens from CubDB (Phase 9)
+    {:ok, restored_count} = Solo.Capability.TokenStore.restore_all_tokens(:capabilities)
+    Logger.info("[Capability.Manager] Restored #{restored_count} capability tokens from disk")
+
     schedule_cleanup()
 
     {:ok, %{}}
@@ -79,8 +88,19 @@ defmodule Solo.Capability.Manager do
     {:ok, token, capability} =
       Solo.Capability.create(resource_ref, permissions, ttl_seconds, tenant_id)
 
-    # Store capability by token hash
+    # Store capability by token hash in ETS
     :ets.insert(:capabilities, {capability.token_hash, capability})
+
+    # Persist token to disk (Phase 9) - don't fail grant if persistence fails
+    case Solo.Capability.TokenStore.store_token(capability.token_hash, capability) do
+      :ok ->
+        Logger.debug("[Capability.Manager] Token persisted for #{resource_ref}")
+
+      {:error, reason} ->
+        Logger.warning(
+          "[Capability.Manager] Failed to persist token for #{resource_ref}: #{reason}"
+        )
+    end
 
     # Emit event
     Solo.EventStore.emit(:capability_granted, {tenant_id, resource_ref}, %{
@@ -100,6 +120,9 @@ defmodule Solo.Capability.Manager do
       [{_hash, cap}] ->
         revoked_cap = Solo.Capability.revoke(cap)
         :ets.insert(:capabilities, {token_hash, revoked_cap})
+
+        # Revoke from persistent storage (Phase 9)
+        Solo.Capability.TokenStore.revoke_token(token_hash)
 
         # Emit event
         Solo.EventStore.emit(:capability_revoked, {cap.tenant_id, cap.resource_ref}, %{

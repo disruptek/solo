@@ -10,14 +10,16 @@ defmodule Solo.System.Supervisor do
    2. AtomMonitor - runtime atom table monitoring
    3. Registry - service discovery
    4. Deployer - service deployment and lifecycle management
-   5. Capability.Manager - capability token lifecycle (Phase 4)
-   6. LoadShedder - gateway-level load shedding (Phase 5)
-   7. Vault - encrypted secret storage (Phase 7)
-   8. ServiceRegistry - service registry and discovery (Phase 8)
-   9. Telemetry - observability and metrics (Phase 7)
-   10. Gateway - gRPC server with mTLS
+   5. Recovery.Replayer - recover services from EventStore (Phase 9, temporary)
+   6. Capability.Manager - capability token lifecycle (Phase 4)
+   7. LoadShedder - gateway-level load shedding (Phase 5)
+   8. Vault - encrypted secret storage (Phase 7)
+   9. ServiceRegistry - service registry and discovery (Phase 8)
+   10. Telemetry - observability and metrics (Phase 7)
+   11. Gateway - gRPC server with mTLS
 
   The order matters because later children depend on earlier ones.
+  Recovery.Replayer runs after Deployer is initialized but before capabilities.
   """
 
   use Supervisor
@@ -33,6 +35,11 @@ defmodule Solo.System.Supervisor do
       Solo.AtomMonitor,
       {Solo.Registry, []},
       Solo.Deployment.Deployer,
+      %{
+        id: Solo.Recovery.Replayer,
+        start: {Solo.Recovery.Replayer, :start_link, [[]]},
+        restart: :temporary
+      },
       Solo.Capability.Manager,
       Solo.Backpressure.LoadShedder,
       {Solo.Vault, [db_path: "./data/vault"]},

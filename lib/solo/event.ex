@@ -38,6 +38,8 @@ defmodule Solo.Event do
           | :service_started
           | :service_killed
           | :service_crashed
+          | :service_recovered
+          | :service_recovery_failed
           | :atom_usage_high
           | :resource_violation
           | :capability_granted
@@ -50,6 +52,8 @@ defmodule Solo.Event do
           | :secret_stored
           | :secret_accessed
           | :secret_access_denied
+          | :system_shutdown_started
+          | :system_shutdown_complete
 
   @type t :: %__MODULE__{
           id: non_neg_integer(),
@@ -65,7 +69,14 @@ defmodule Solo.Event do
   @doc """
   Create a new event with monotonic timestamp and wall clock.
   """
-  @spec new(event_type(), any(), map(), non_neg_integer(), String.t() | nil, non_neg_integer() | nil) :: t()
+  @spec new(
+          event_type(),
+          any(),
+          map(),
+          non_neg_integer(),
+          String.t() | nil,
+          non_neg_integer() | nil
+        ) :: t()
   def new(event_type, subject, payload, id, tenant_id \\ nil, causation_id \\ nil) do
     %__MODULE__{
       id: id,

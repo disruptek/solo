@@ -12,6 +12,9 @@ defmodule Solo.Application do
     # Load configuration from file if it exists
     load_configuration()
 
+    # Register SIGTERM handler for graceful shutdown (Phase 9)
+    Solo.Shutdown.GracefulShutdown.start_handler()
+
     children = [
       Solo.Kernel
     ]

@@ -29,10 +29,12 @@ Thumbs.db
 # data/ subdirectory contains:
 #  - Event store (./data/events/) - session-specific
 #  - Vault (./data/vault/) - session-specific
+#  - Tokens (./data/tokens/) - session-specific (Phase 9)
 #  - Certificates (./data/certs/) - only CA required, service certs regenerated
 # To preserve data across runs, see DEPLOYMENT.md for persistence setup
 /data/events/
 /data/vault/
+/data/tokens/
 /data/certs/server*.pem
 
 # Test artifacts
