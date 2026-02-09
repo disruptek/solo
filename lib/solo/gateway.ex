@@ -34,11 +34,15 @@ defmodule Solo.Gateway do
   # === Private Helpers ===
 
   defp start_server do
-    # For Phase 3, we initialize the Gateway but defer actual gRPC server startup
-    # Certificates will be generated on-demand via mix task
-    Logger.info("[Gateway] Ready (gRPC server to be bound to port #{@port})")
-    {:ok, self()}
+    # Start the gRPC server
+    case GRPC.Server.start([Solo.Gateway.Server], @port) do
+      {:ok, pid, port} ->
+        Logger.info("[Gateway] gRPC server started on port #{port} (requested: #{@port})")
+        {:ok, pid}
+
+      {:error, reason} ->
+        Logger.error("[Gateway] Failed to start gRPC server: #{inspect(reason)}")
+        {:ok, self()}
+    end
   end
-
-
 end
