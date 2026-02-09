@@ -9,6 +9,7 @@ defmodule Solo.System.Supervisor do
   1. EventStore - the append-only log
   2. AtomMonitor - runtime atom table monitoring
   3. Registry - service discovery
+  4. Deployer - service deployment and lifecycle management
 
   The order matters because later children depend on earlier ones.
   """
@@ -24,7 +25,8 @@ defmodule Solo.System.Supervisor do
     children = [
       {Solo.EventStore, [db_path: "./data/events"]},
       Solo.AtomMonitor,
-      {Solo.Registry, []}
+      {Solo.Registry, []},
+      Solo.Deployment.Deployer
     ]
 
     Supervisor.init(children, strategy: :rest_for_one)
