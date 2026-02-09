@@ -14,6 +14,7 @@ defmodule Solo.MixProject do
           applications: [runtime_tools: :permanent]
         ]
       ],
+      escript: [main_module: SoloCLI],
       # Protocol buffer compilation
       protoc_gen_elixir_version: "0.13.0"
     ]
