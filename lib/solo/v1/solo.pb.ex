@@ -114,3 +114,75 @@ defmodule Solo.V1.ShutdownResponse do
   field(:status, 1, type: :string)
   field(:message, 2, type: :string)
 end
+
+# Service Discovery Messages
+
+defmodule Solo.V1.ServiceMetadata do
+  @moduledoc false
+  use Protobuf, protoc_gen_elixir_version: "0.13.0", syntax: :proto3
+
+  field(:key, 1, type: :string)
+  field(:value, 2, type: :string)
+end
+
+defmodule Solo.V1.RegisterServiceRequest do
+  @moduledoc false
+  use Protobuf, protoc_gen_elixir_version: "0.13.0", syntax: :proto3
+
+  field(:service_id, 1, type: :string)
+  field(:service_name, 2, type: :string)
+  field(:version, 3, type: :string)
+  field(:metadata, 4, repeated: true, type: Solo.V1.ServiceMetadata, map: true)
+  field(:ttl_seconds, 5, type: :int32)
+end
+
+defmodule Solo.V1.RegisterServiceResponse do
+  @moduledoc false
+  use Protobuf, protoc_gen_elixir_version: "0.13.0", syntax: :proto3
+
+  field(:registered, 1, type: :bool)
+  field(:service_handle, 2, type: :string)
+  field(:error, 3, type: :string)
+end
+
+defmodule Solo.V1.DiscoverServiceRequest do
+  @moduledoc false
+  use Protobuf, protoc_gen_elixir_version: "0.13.0", syntax: :proto3
+
+  field(:service_name, 1, type: :string)
+  field(:filters, 2, repeated: true, type: Solo.V1.ServiceMetadata, map: true)
+end
+
+defmodule Solo.V1.DiscoveredService do
+  @moduledoc false
+  use Protobuf, protoc_gen_elixir_version: "0.13.0", syntax: :proto3
+
+  field(:service_id, 1, type: :string)
+  field(:service_handle, 2, type: :string)
+  field(:service_name, 3, type: :string)
+  field(:version, 4, type: :string)
+  field(:alive, 5, type: :bool)
+  field(:metadata, 6, repeated: true, type: Solo.V1.ServiceMetadata, map: true)
+end
+
+defmodule Solo.V1.DiscoverServiceResponse do
+  @moduledoc false
+  use Protobuf, protoc_gen_elixir_version: "0.13.0", syntax: :proto3
+
+  field(:services, 1, repeated: true, type: Solo.V1.DiscoveredService)
+end
+
+defmodule Solo.V1.GetServicesRequest do
+  @moduledoc false
+  use Protobuf, protoc_gen_elixir_version: "0.13.0", syntax: :proto3
+
+  field(:service_name, 1, type: :string)
+end
+
+defmodule Solo.V1.GetServicesResponse do
+  @moduledoc false
+  use Protobuf, protoc_gen_elixir_version: "0.13.0", syntax: :proto3
+
+  field(:services, 1, repeated: true, type: Solo.V1.DiscoveredService)
+  field(:total_count, 2, type: :int64)
+end

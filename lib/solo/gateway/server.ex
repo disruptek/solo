@@ -25,7 +25,14 @@ defmodule Solo.Gateway.Server do
     ListResponse,
     Event,
     ShutdownRequest,
-    ShutdownResponse
+    ShutdownResponse,
+    RegisterServiceRequest,
+    RegisterServiceResponse,
+    DiscoverServiceRequest,
+    DiscoverServiceResponse,
+    DiscoveredService,
+    GetServicesRequest,
+    GetServicesResponse
   }
 
   # === RPC Handlers ===
@@ -224,6 +231,113 @@ defmodule Solo.Gateway.Server do
     |> Stream.run()
   end
 
+  @doc """
+  Register a service for discovery.
+  """
+  def register_service(request, stream) do
+    request
+    |> Stream.unary(materializer: stream)
+    |> Stream.map(fn %Solo.V1.RegisterServiceRequest{} = req ->
+      tenant_id = extract_tenant_from_context(stream)
+      Logger.info("[Gateway] Register service: #{tenant_id}/#{req.service_id}")
+
+      metadata = Map.new(req.metadata)
+
+      case Solo.ServiceRegistry.register(
+             tenant_id,
+             req.service_id,
+             req.service_name,
+             req.version,
+             metadata,
+             req.ttl_seconds
+           ) do
+        {:ok, handle} ->
+          Logger.info("[Gateway] Service registered with handle: #{handle}")
+
+          %RegisterServiceResponse{
+            registered: true,
+            service_handle: handle,
+            error: ""
+          }
+
+        {:error, reason} ->
+          Logger.warning("[Gateway] Registration failed: #{inspect(reason)}")
+
+          %RegisterServiceResponse{
+            registered: false,
+            service_handle: "",
+            error: to_string(reason)
+          }
+      end
+    end)
+    |> Stream.run()
+  end
+
+  @doc """
+  Discover services by name.
+  """
+  def discover_service(request, stream) do
+    request
+    |> Stream.unary(materializer: stream)
+    |> Stream.map(fn %Solo.V1.DiscoverServiceRequest{} = req ->
+      tenant_id = extract_tenant_from_context(stream)
+      filters = Map.new(req.filters)
+      Logger.info("[Gateway] Discover service: #{req.service_name} for #{tenant_id}")
+
+      {:ok, services} = Solo.ServiceRegistry.discover(tenant_id, req.service_name, filters)
+
+      discovered =
+        Enum.map(services, fn service ->
+          %DiscoveredService{
+            service_id: service.service_id,
+            service_handle: service.handle,
+            service_name: service.service_name,
+            version: service.version,
+            alive: service_alive?(tenant_id, service.service_id),
+            metadata: service.metadata
+          }
+        end)
+
+      %DiscoverServiceResponse{
+        services: discovered
+      }
+    end)
+    |> Stream.run()
+  end
+
+  @doc """
+  Get all services for a tenant.
+  """
+  def get_services(request, stream) do
+    request
+    |> Stream.unary(materializer: stream)
+    |> Stream.map(fn %Solo.V1.GetServicesRequest{} = req ->
+      tenant_id = extract_tenant_from_context(stream)
+      service_name = if req.service_name == "", do: nil, else: req.service_name
+      Logger.info("[Gateway] Get services for #{tenant_id}")
+
+      {:ok, services} = Solo.ServiceRegistry.list_services(tenant_id, service_name)
+
+      discovered =
+        Enum.map(services, fn service ->
+          %DiscoveredService{
+            service_id: service.service_id,
+            service_handle: service.handle,
+            service_name: service.service_name,
+            version: service.version,
+            alive: service_alive?(tenant_id, service.service_id),
+            metadata: service.metadata
+          }
+        end)
+
+      %GetServicesResponse{
+        services: discovered,
+        total_count: Enum.count(discovered)
+      }
+    end)
+    |> Stream.run()
+  end
+
   # === Private Helpers ===
 
   defp extract_tenant_from_context(_stream) do
@@ -300,4 +414,11 @@ defmodule Solo.Gateway.Server do
   end
 
   defp extract_reductions(_), do: 0
+
+  defp service_alive?(tenant_id, service_id) do
+    case Solo.Deployment.Deployer.status(tenant_id, service_id) do
+      status when is_map(status) -> status.alive
+      {:error, _} -> false
+    end
+  end
 end

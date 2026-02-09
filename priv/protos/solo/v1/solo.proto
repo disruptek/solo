@@ -18,8 +18,13 @@ service SoloKernel {
   // Watch events in real-time (streaming)
   rpc Watch(WatchRequest) returns (stream Event);
 
-  // Graceful shutdown of Solo kernel
-  rpc Shutdown(ShutdownRequest) returns (ShutdownResponse);
+   // Graceful shutdown of Solo kernel
+   rpc Shutdown(ShutdownRequest) returns (ShutdownResponse);
+
+   // Service Discovery
+   rpc RegisterService(RegisterServiceRequest) returns (RegisterServiceResponse);
+   rpc DiscoverService(DiscoverServiceRequest) returns (DiscoverServiceResponse);
+   rpc GetServices(GetServicesRequest) returns (GetServicesResponse);
 }
 
 // Deploy request
@@ -104,4 +109,52 @@ message ShutdownRequest {
 message ShutdownResponse {
   string status = 1;  // "ok" or "error"
   string message = 2;
+}
+
+// Service Discovery
+
+message ServiceMetadata {
+  string key = 1;
+  string value = 2;
+}
+
+message RegisterServiceRequest {
+  string service_id = 1;
+  string service_name = 2;  // Logical name for discovery
+  string version = 3;       // Service version
+  map<string, string> metadata = 4;  // Tags: role, environment, etc
+  int32 ttl_seconds = 5;    // Time-to-live for registration (0 = permanent)
+}
+
+message RegisterServiceResponse {
+  bool registered = 1;
+  string service_handle = 2;  // Unique handle for this registration
+  string error = 3;
+}
+
+message DiscoverServiceRequest {
+  string service_name = 1;  // Name to discover
+  map<string, string> filters = 2;  // Filter by metadata (role=api, env=prod)
+}
+
+message DiscoverServiceResponse {
+  repeated DiscoveredService services = 1;
+}
+
+message DiscoveredService {
+  string service_id = 1;
+  string service_handle = 2;
+  string service_name = 3;
+  string version = 4;
+  bool alive = 5;
+  map<string, string> metadata = 6;
+}
+
+message GetServicesRequest {
+  string service_name = 1;  // Empty = all services
+}
+
+message GetServicesResponse {
+  repeated DiscoveredService services = 1;
+  int64 total_count = 2;
 }

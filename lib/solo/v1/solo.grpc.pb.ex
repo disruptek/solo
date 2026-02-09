@@ -8,6 +8,9 @@ defmodule Solo.V1.SoloKernel.Service do
   rpc(:List, Solo.V1.ListRequest, Solo.V1.ListResponse)
   rpc(:Watch, Solo.V1.WatchRequest, stream(Solo.V1.Event))
   rpc(:Shutdown, Solo.V1.ShutdownRequest, Solo.V1.ShutdownResponse)
+  rpc(:RegisterService, Solo.V1.RegisterServiceRequest, Solo.V1.RegisterServiceResponse)
+  rpc(:DiscoverService, Solo.V1.DiscoverServiceRequest, Solo.V1.DiscoverServiceResponse)
+  rpc(:GetServices, Solo.V1.GetServicesRequest, Solo.V1.GetServicesResponse)
 end
 
 defmodule Solo.V1.SoloKernel.Stub do
