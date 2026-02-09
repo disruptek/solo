@@ -28,22 +28,20 @@ defmodule Solo.Gateway.REST.Router do
   def routes do
     [
       # Service Management
-      {"POST", "/services", Solo.Gateway.REST.ServicesHandler, [action: :create]},
-      {"GET", "/services", Solo.Gateway.REST.ServicesHandler, [action: :list]},
-      {"GET", "/services/:service_id", Solo.Gateway.REST.ServiceHandler, [action: :show]},
-      {"DELETE", "/services/:service_id", Solo.Gateway.REST.ServiceHandler, [action: :delete]},
+      {"/services", Solo.Gateway.REST.ServicesHandler, []},
+      {"/services/:service_id", Solo.Gateway.REST.ServiceHandler, []},
 
       # Events Streaming
-      {"GET", "/events", Solo.Gateway.REST.EventsHandler, []},
+      {"/events", Solo.Gateway.REST.EventsHandler, []},
 
       # Health Check
-      {"GET", "/health", Solo.Gateway.HealthHandler, []},
+      {"/health", Solo.Gateway.HealthHandler, []},
 
       # Metrics
-      {"GET", "/metrics", Solo.Gateway.MetricsHandler, []},
+      {"/metrics", Solo.Gateway.MetricsHandler, []},
 
       # Catch-all 404
-      {"_", "/:_", Solo.Gateway.NotFoundHandler, []}
+      {"/:_", Solo.Gateway.NotFoundHandler, []}
     ]
   end
 end

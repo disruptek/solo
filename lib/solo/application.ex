@@ -29,25 +29,31 @@ defmodule Solo.Application do
   # === Private Helpers ===
 
   defp load_configuration do
-    config_path = System.get_env("SOLO_CONFIG", "config.toml")
+    config_path = System.get_env("SOLO_CONFIG")
 
-    case File.exists?(config_path) do
-      true ->
-        Logger.info("Loading configuration from #{config_path}")
+    case config_path do
+      nil ->
+        Logger.debug("SOLO_CONFIG not set, using default configuration")
 
-        case Solo.Config.load(config_path) do
-          {:ok, config} ->
-            # Store configuration in application environment
-            Application.put_env(:solo, :config, config)
-            Logger.info("Configuration loaded successfully")
+      path when is_binary(path) ->
+        case File.exists?(path) do
+          true ->
+            Logger.info("Loading configuration from #{path}")
 
-          {:error, reason} ->
-            Logger.warning("Failed to load configuration: #{inspect(reason)}")
-            # Continue with defaults
+            case Solo.Config.load(path) do
+              {:ok, config} ->
+                # Store configuration in application environment
+                Application.put_env(:solo, :config, config)
+                Logger.info("Configuration loaded successfully")
+
+              {:error, reason} ->
+                Logger.warning("Failed to load configuration: #{inspect(reason)}, using defaults")
+                # Continue with defaults
+            end
+
+          false ->
+            Logger.warning("Configuration file not found: #{path}, using defaults")
         end
-
-      false ->
-        Logger.debug("Configuration file not found (#{config_path}), using defaults")
     end
   end
 end

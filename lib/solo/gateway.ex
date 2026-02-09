@@ -57,23 +57,29 @@ defmodule Solo.Gateway do
   end
 
   defp start_http_server do
-    # Start HTTP REST API endpoints
-    dispatch = Solo.Gateway.REST.Router.compile()
+    try do
+      # Start HTTP REST API endpoints
+      dispatch = Solo.Gateway.REST.Router.compile()
 
-    case :cowboy.start_clear(:http, [port: @http_port], %{env: [dispatch: dispatch]}) do
-      {:ok, pid} ->
-        Logger.info("[Gateway] REST API started on port #{@http_port}")
-        Logger.info("[Gateway] Available endpoints:")
-        Logger.info("[Gateway]   POST /services - Deploy service")
-        Logger.info("[Gateway]   GET /services - List services")
-        Logger.info("[Gateway]   GET /services/{id} - Get service status")
-        Logger.info("[Gateway]   DELETE /services/{id} - Kill service")
-        Logger.info("[Gateway]   GET /events - Stream events (SSE)")
-        Logger.info("[Gateway]   GET /health - Health check")
-        {:ok, pid}
+      case :cowboy.start_clear(:http, [port: @http_port], %{env: [dispatch: dispatch]}) do
+        {:ok, pid} ->
+          Logger.info("[Gateway] REST API started on port #{@http_port}")
+          Logger.info("[Gateway] Available endpoints:")
+          Logger.info("[Gateway]   POST /services - Deploy service")
+          Logger.info("[Gateway]   GET /services - List services")
+          Logger.info("[Gateway]   GET /services/{id} - Get service status")
+          Logger.info("[Gateway]   DELETE /services/{id} - Kill service")
+          Logger.info("[Gateway]   GET /events - Stream events (SSE)")
+          Logger.info("[Gateway]   GET /health - Health check")
+          {:ok, pid}
 
-      {:error, reason} ->
-        Logger.warning("[Gateway] Failed to start HTTP server: #{inspect(reason)}")
+        {:error, reason} ->
+          Logger.warning("[Gateway] Failed to start HTTP server: #{inspect(reason)}")
+          {:ok, self()}
+      end
+    rescue
+      e ->
+        Logger.warning("[Gateway] Exception starting HTTP server: #{inspect(e)}")
         {:ok, self()}
     end
   end
