@@ -459,9 +459,13 @@ export SOLO_MEMORY_LIMIT=512  # MB per tenant
 export SOLO_PROCESS_LIMIT=100  # processes per tenant
 export SOLO_MAILBOX_LIMIT=10000  # messages per process
 
-# Start the system
+# Start the Solo server
+mix run --no-halt
+
+# In another terminal, build and use the CLI
 mix escript.build
-./solo start
+./solo health
+./solo deploy myservice.ex
 ```
 
 ### Monitoring
