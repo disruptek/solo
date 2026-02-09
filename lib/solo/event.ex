@@ -34,6 +34,7 @@ defmodule Solo.Event do
   @type event_type ::
           :system_started
           | :service_deployed
+          | :service_deployment_failed
           | :service_started
           | :service_killed
           | :service_crashed
@@ -42,6 +43,7 @@ defmodule Solo.Event do
           | :capability_granted
           | :capability_revoked
           | :capability_denied
+          | :capability_verified
           | :hot_swap_started
           | :hot_swap_succeeded
           | :hot_swap_rolled_back

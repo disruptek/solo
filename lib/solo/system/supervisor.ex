@@ -10,7 +10,8 @@ defmodule Solo.System.Supervisor do
   2. AtomMonitor - runtime atom table monitoring
   3. Registry - service discovery
   4. Deployer - service deployment and lifecycle management
-  5. Gateway - gRPC server with mTLS
+  5. Capability.Manager - capability token lifecycle (Phase 4)
+  6. Gateway - gRPC server with mTLS
 
   The order matters because later children depend on earlier ones.
   """
@@ -28,6 +29,7 @@ defmodule Solo.System.Supervisor do
       Solo.AtomMonitor,
       {Solo.Registry, []},
       Solo.Deployment.Deployer,
+      Solo.Capability.Manager,
       Solo.Gateway
     ]
 
