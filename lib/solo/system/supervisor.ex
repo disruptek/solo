@@ -11,7 +11,8 @@ defmodule Solo.System.Supervisor do
   3. Registry - service discovery
   4. Deployer - service deployment and lifecycle management
   5. Capability.Manager - capability token lifecycle (Phase 4)
-  6. Gateway - gRPC server with mTLS
+  6. LoadShedder - gateway-level load shedding (Phase 5)
+  7. Gateway - gRPC server with mTLS
 
   The order matters because later children depend on earlier ones.
   """
@@ -30,6 +31,7 @@ defmodule Solo.System.Supervisor do
       {Solo.Registry, []},
       Solo.Deployment.Deployer,
       Solo.Capability.Manager,
+      Solo.Backpressure.LoadShedder,
       Solo.Gateway
     ]
 
