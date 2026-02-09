@@ -13,7 +13,9 @@ defmodule Solo.MixProject do
           include_executables_for: [:unix],
           applications: [runtime_tools: :permanent]
         ]
-      ]
+      ],
+      # Protocol buffer compilation
+      protoc_gen_elixir_version: "0.13.0"
     ]
   end
 
@@ -29,6 +31,11 @@ defmodule Solo.MixProject do
       # Persistence
       {:cubdb, "~> 2.0"},
 
+      # gRPC (added in Phase 3)
+      {:grpc, "~> 0.9"},
+      {:protobuf, "~> 0.13"},
+      {:google_protos, "~> 0.1"},
+
       # Security
       {:x509, "~> 0.8"},
 
@@ -43,7 +50,7 @@ defmodule Solo.MixProject do
 
       # Code quality
       {:credo, "~> 1.7", only: [:dev, :test]},
-      {:dialyxir, "~> 1.4", only: [:dev, :test]},
+      {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.34", only: :dev}
     ]
   end

@@ -1,0 +1,107 @@
+syntax = "proto3";
+
+package solo.v1;
+
+service SoloKernel {
+  // Deploy a service from source code
+  rpc Deploy(DeployRequest) returns (DeployResponse);
+
+  // Get status of a running service
+  rpc Status(StatusRequest) returns (StatusResponse);
+
+  // Kill a running service
+  rpc Kill(KillRequest) returns (KillResponse);
+
+  // List all services for the authenticated tenant
+  rpc List(ListRequest) returns (ListResponse);
+
+  // Watch events in real-time (streaming)
+  rpc Watch(WatchRequest) returns (stream Event);
+
+  // Graceful shutdown of Solo kernel
+  rpc Shutdown(ShutdownRequest) returns (ShutdownResponse);
+}
+
+// Deploy request
+message DeployRequest {
+  string service_id = 1;
+  string code = 2;
+  DeployFormat format = 3;
+
+  enum DeployFormat {
+    DEPLOY_FORMAT_UNSPECIFIED = 0;
+    ELIXIR_SOURCE = 1;
+  }
+}
+
+message DeployResponse {
+  string service_id = 1;
+  string status = 2;  // "ok" or "error"
+  string error = 3;   // error message if status is "error"
+}
+
+// Status request
+message StatusRequest {
+  string service_id = 1;
+}
+
+message StatusResponse {
+  string service_id = 1;
+  bool alive = 2;
+  int64 memory_bytes = 3;
+  int64 message_queue_len = 4;
+  int64 reductions = 5;
+}
+
+// Kill request
+message KillRequest {
+  string service_id = 1;
+  int32 timeout_ms = 2;  // 0 = force kill
+  bool force = 3;
+}
+
+message KillResponse {
+  string service_id = 1;
+  string status = 2;  // "ok" or "error"
+  string error = 3;
+}
+
+// List request
+message ListRequest {
+  // No parameters - returns all services for authenticated tenant
+}
+
+message ListResponse {
+  repeated ServiceInfo services = 1;
+}
+
+message ServiceInfo {
+  string service_id = 1;
+  bool alive = 2;
+}
+
+// Watch request (for streaming events)
+message WatchRequest {
+  string service_id = 1;  // optional: filter by service_id
+  bool include_logs = 2;   // optional: include verbose logging
+}
+
+// Event message (for streaming)
+message Event {
+  uint64 id = 1;
+  int64 timestamp = 2;
+  string event_type = 3;
+  string subject = 4;
+  bytes payload = 5;
+  uint64 causation_id = 6;
+}
+
+// Shutdown request
+message ShutdownRequest {
+  int32 grace_period_ms = 1;  // milliseconds to wait before force shutdown
+}
+
+message ShutdownResponse {
+  string status = 1;  // "ok" or "error"
+  string message = 2;
+}

@@ -10,6 +10,7 @@ defmodule Solo.System.Supervisor do
   2. AtomMonitor - runtime atom table monitoring
   3. Registry - service discovery
   4. Deployer - service deployment and lifecycle management
+  5. Gateway - gRPC server with mTLS
 
   The order matters because later children depend on earlier ones.
   """
@@ -26,7 +27,8 @@ defmodule Solo.System.Supervisor do
       {Solo.EventStore, [db_path: "./data/events"]},
       Solo.AtomMonitor,
       {Solo.Registry, []},
-      Solo.Deployment.Deployer
+      Solo.Deployment.Deployer,
+      Solo.Gateway
     ]
 
     Supervisor.init(children, strategy: :rest_for_one)
