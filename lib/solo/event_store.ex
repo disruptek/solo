@@ -55,6 +55,37 @@ defmodule Solo.EventStore do
     GenServer.call(__MODULE__, :last_id)
   end
 
+  @doc """
+  Filter events by type, tenant, or service.
+
+  Options:
+  - `event_type`: Match specific event type
+  - `tenant_id`: Filter by tenant
+  - `service_id`: Filter by service (requires tenant_id)
+
+  Returns a list of matching Solo.Event structs.
+  """
+  @spec filter(Keyword.t()) :: list(Solo.Event.t())
+  def filter(opts \\ []) do
+    event_type = Keyword.get(opts, :event_type)
+    tenant_id = Keyword.get(opts, :tenant_id)
+    service_id = Keyword.get(opts, :service_id)
+
+    stream(tenant_id: tenant_id, service_id: service_id)
+    |> Stream.filter(fn event ->
+      if event_type, do: event.event_type == event_type, else: true
+    end)
+    |> Enum.to_list()
+  end
+
+  @doc """
+  Reset the event store for testing (drops all events).
+  """
+  @spec reset!() :: :ok
+  def reset! do
+    GenServer.call(__MODULE__, :reset)
+  end
+
   # === GenServer Callbacks ===
 
   @impl GenServer
@@ -96,6 +127,15 @@ defmodule Solo.EventStore do
   @impl GenServer
   def handle_call(:last_id, _from, state) do
     {:reply, state.next_id - 1, state}
+  end
+
+  def handle_call(:reset, _from, %{db: db} = state) do
+    # Clear all events and reset counter
+    # Get all keys and delete them
+    keys = CubDB.select(db, []) |> Enum.map(&elem(&1, 0)) |> Enum.to_list()
+    Enum.each(keys, &CubDB.delete(db, &1))
+    CubDB.put(db, :next_id, 1)
+    {:reply, :ok, %{state | next_id: 1}}
   end
 
   def handle_call({:stream, opts}, _from, %{db: db} = state) do

@@ -1,0 +1,315 @@
+╔════════════════════════════════════════════════════════════════════════════╗
+║                                                                            ║
+║                   SOLO: USER-LEVEL OPERATING SYSTEM                       ║
+║            Bulletproof Services on Demand for LLM Agents                  ║
+║                                                                            ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PROJECT FACTS
+
+  Language:           Elixir (+ Rust NIFs for bottlenecks)
+  Runtime:            Erlang/OTP (BEAM VM)
+  Deployment:         Docker containers
+  API:                gRPC (strict protobuf schemas)
+  Target Machine:     Single powerful Linux box (multi-machine later)
+  
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CORE PROMISES
+
+  ✓ 99.99% Uptime        (4 minutes/month downtime)
+  ✓ Sub-100ms Deployment (Fast service spawn)
+  ✓ Bulletproof Isolation (Actor model + capabilities)
+  ✓ Automatic Recovery   (Supervisor trees)
+  ✓ Fine-Grained Control (Capability-based security)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ARCHITECTURE LAYERS
+
+  Layer 7: User Services (LLM-deployed microservices)
+      ↓
+  Layer 6: gRPC API (Deploy, Status, Kill, Watch, etc.)
+      ↓
+  Layer 5: Service-to-Service Communication (Direct PIDs, Registry, RPC)
+      ↓
+  Layer 4: Isolation & Capabilities (Unforgeable tokens, attenuation)
+      ↓
+  Layer 3: Resource Management (Memory, CPU, process limits)
+      ↓
+  Layer 2: Kernel Services (Filesystem, network, drivers, audit)
+      ↓
+  Layer 1: Erlang/OTP Runtime (BEAM VM, preemptive scheduler)
+      ↓
+  Layer 0: Linux + Hardware (Processes, memory, storage)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+THREE SECURITY LAYERS
+
+  Layer 1: Unforgeable References
+    → Erlang PIDs are cryptographically unforgeable
+    → Only kernel issues them, services can't fake access
+
+  Layer 2: Capability Tokens
+    → Wrap PIDs with permissions (read, write, execute)
+    → Time-limited, revocable
+    → Prevent confused deputy attacks
+
+  Layer 3: OS-Level Isolation (Future)
+    → Seccomp syscall filters
+    → Resource limits (cgroups)
+    → Pledge/unveil file restrictions
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+SERVICE DEPLOYMENT OPTIONS
+
+  Mode 1: Elixir Source Code
+    → Agent sends: defmodule MyService do ... end
+    → Startup: 50-200ms (compilation)
+
+  Mode 2: BEAM Bytecode (Recommended)
+    → Agent sends: .beam binary file
+    → Startup: 5-10ms (pre-compiled)
+
+  Mode 3: External Binary
+    → Agent sends: /path/to/compiled/binary
+    → Any language (Go, Rust, Python, etc.)
+    → Startup: 10-50ms
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+TWO-TIER SERVICE MODEL
+
+  System Services (SLA: 99.99%)
+    • Kernel-critical (filesystem, audit, monitor)
+    • Priority scheduling
+    • Large resource budgets
+    • Cannot be killed by user services
+
+  User Services (SLA: Best-effort)
+    • LLM-deployed applications
+    • Resource-limited
+    • Killable/restartable anytime
+    • Isolated from each other
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+SUPERVISOR HIERARCHY
+
+  Root (:one_for_one)
+  ├─ System (:rest_for_one)     [Audit, Registry, Monitor]
+  ├─ Drivers (:one_for_one)     [Filesystem, Network, Hardware]
+  ├─ User Services (:one_for_one) [Service1, Service2, ...]
+  └─ gRPC Server
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+gRPC API (8 Core Operations)
+
+  Deploy(code, capabilities, resources)      → ServicePID
+  Status(service_id)                        → Status, Memory, CPU
+  Kill(service_id, force)                   → OK/Error
+  Watch(service_id)                         → Stream [Logs, Metrics, Events]
+  GrantCapability(service, perm, ttl)       → CapabilityToken
+  List(filter)                              → [Service, Service, ...]
+  Update(service, new_code, strategy)       → UpdateStatus
+  Shutdown(timeout)                         → OK
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+SERVICE COMMUNICATION OPTIONS
+
+  Direct Send (Fastest)
+    send(service_pid, {:request, data})
+    Latency: ~1µs
+
+  GenServer.call (Synchronous)
+    GenServer.call(service_pid, {:compute, data}, timeout: 5000)
+    Latency: ~20µs
+
+  Registry Lookup (Discovery)
+    {:ok, pid} = Registry.lookup(Solo.Registry, "service_name")
+    Latency: ~50µs
+
+  Erlang Distribution (Multi-machine, future)
+    GenServer.call({:service, :"node@host"}, request)
+    Latency: ~100-500µs (includes network)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+RESOURCE LIMITS (Configurable per Service)
+
+  max_processes:          100           (Child processes)
+  max_memory_bytes:       4_000_000_000 (4GB per process)
+  cpu_shares:             1024          (Relative allocation)
+  message_queue_limit:    10_000        (Alert threshold)
+  startup_timeout_ms:     100           (Must start in 100ms)
+  shutdown_timeout_ms:    30_000        (30s graceful shutdown)
+  limit_exceeded_action:  :kill|:throttle|:warn
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+DEPLOYMENT STRATEGIES
+
+  Rolling Update
+    [V1,V1,V1] → [V2,V1,V1] → [V2,V2,V1] → [V2,V2,V2]
+    Configurable: max_surge, max_unavailable
+
+  Canary Deployment
+    [V2(10%),V1(90%)] → [V2(30%),V1(70%)] → [V2(100%)]
+    Auto-rollback on metrics failure
+
+  Blue-Green Deployment
+    BLUE: [V1,V1,V1] ← Active
+    GREEN: [V2,V2,V2] ← Warming
+    (switch) → GREEN: [V2,V2,V2] ← Active
+    BLUE: [V1,V1,V1] ← Draining
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PERFORMANCE TARGETS
+
+  Service Startup        <100ms p99    (BEAM bytecode)
+  Direct Message Send    <5µs          (Same machine)
+  GenServer.call         <20µs         (Synchronous RPC)
+  gRPC Roundtrip         <50ms         (Network included)
+  Max Concurrent         500+          (Hundreds not thousands)
+  Memory per Service     2-5MB         (Baseline, plus data)
+  System Uptime          99.99%        (4 min/month downtime)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+THREAT MODEL COVERAGE
+
+  Threat                    Layer    Strength
+  ─────────────────────────────────────────────
+  Service memory access     1        ⭐⭐⭐⭐⭐
+  Confused deputy           2        ⭐⭐⭐⭐⭐
+  Privilege escalation      2        ⭐⭐⭐⭐
+  Resource exhaustion       3        ⭐⭐⭐⭐
+  Syscall abuse             Future   ⭐⭐⭐
+  Process crashes           1        ⭐⭐⭐⭐⭐
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+OBSERVABILITY
+
+  Metrics (Prometheus):
+    • solo_deployment_count
+    • solo_active_services
+    • solo_service_memory_bytes
+    • solo_service_startup_ms
+    • solo_grpc_request_duration_ms
+
+  Audit Logging (Mandatory):
+    • All deployments
+    • All terminations
+    • Capability grants/revokes
+    • Resource violations
+    • Shutdowns
+
+  Pluggable Backends:
+    • Local file
+    • Syslog
+    • HTTP webhook
+    • Custom implementations
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+DEVELOPMENT TIMELINE
+
+  Phase 1  (Weeks 1-4):    Foundation (supervisor tree)
+  Phase 2  (Weeks 5-8):    Security (capabilities)
+  Phase 3  (Weeks 9-12):   Deployment (code loading)
+  Phase 4  (Weeks 13-16):  gRPC API
+  Phase 5  (Weeks 17-20):  Resource management
+  Phase 6  (Weeks 21-24):  Persistence
+  Phase 7  (Weeks 25-28):  Observability
+  Phase 8  (Weeks 29-32):  Hot reload & updates
+  Phase 9  (Weeks 33-36):  Reliability hardening
+  Phase 10 (Weeks 37-40):  Documentation & MVP release
+
+  ─────────────────────────────────────────────
+  Total: ~40 weeks (9-10 months) for full MVP
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+MVP SUCCESS CRITERIA
+
+  ✓ 99.99% uptime       (≤4 minutes downtime in 24h)
+  ✓ <100ms startup      (p99 latency)
+  ✓ 500+ services       (concurrent stable)
+  ✓ Zero violations     (property + chaos tests)
+  ✓ No memory leaks     (24h+ stress test)
+  ✓ Auto-recovery       (all tested failures)
+  ✓ Complete audit      (all operations logged)
+  ✓ Full documentation  (API, examples, guides)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+KEY ADVANTAGES OVER ALTERNATIVES
+
+  vs. Kubernetes:
+    • 10-100x faster startup (100ms vs 1-5s)
+    • Single machine optimized
+    • Simpler mental model
+    • Better for agent request/response loops
+
+  vs. Docker/Systemd:
+    • Actor model isolation (stronger)
+    • Capability-based security
+    • Built-in fault tolerance (99.99%)
+    • Designed for on-demand services
+
+  vs. Custom Erlang System:
+    • Elixir expressiveness + OTP stability
+    • gRPC standard API
+    • Designed from ground up for LLM agents
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+DOCUMENTATION AVAILABLE
+
+  SOLO_DESIGN_SUMMARY.md            (8.7 KB)  ← START HERE
+  solo_design_complete.md            (33 KB)  ← DETAILED SPEC
+  solo_implementation_checklist.md   (12 KB)  ← PHASE TRACKING
+  solo_project_structure.md          (21 KB)  ← CODE TEMPLATES
+  security_patterns_analysis.md      (24 KB)  ← SECURITY DEEP-DIVE
+  implementation_examples.md         (19 KB)  ← CODE EXAMPLES
+  SOLO_DESIGN_INDEX.md               (11 KB)  ← THIS GUIDE
+
+  Total: ~130 KB of comprehensive documentation
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+STATUS
+
+  Design:              ✅ COMPLETE (1.0)
+  Architecture:        ✅ FINALIZED
+  Security Model:      ✅ DEFINED
+  API Specification:   ✅ DETAILED
+  Implementation Plan: ✅ READY
+  Code Templates:      ✅ PROVIDED
+  Next Step:           ⏭️ PHASE 1 IMPLEMENTATION
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+GETTING STARTED
+
+  1. Read:     SOLO_DESIGN_SUMMARY.md (5 minutes)
+  2. Review:   solo_design_complete.md (1-2 hours)
+  3. Approve:  Design and threat model
+  4. Plan:     Use solo_implementation_checklist.md
+  5. Build:    Use solo_project_structure.md and templates
+  6. Execute:  Follow 10-phase roadmap
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Design Version: 1.0
+Last Updated: 2026-02-08
+Status: Ready for Implementation ✅
+
